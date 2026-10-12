@@ -1,0 +1,7 @@
+{
+  "name": "agent-todos",
+  "version": "0.8.0",
+  "description": "Live todo list of the tasks agents are running, with ODD feature tasks, in a side pane or a band above the prompt",
+  "author": { "name": "Irving Aguilar" },
+  "types": "./types/index.d.ts"
+}

@@ -1,0 +1,5 @@
+{
+  "name": "local-mods",
+  "owner": { "name": "Irving Aguilar" },
+  "plugins": [{ "name": "agent-todos", "source": "./" }]
+}
