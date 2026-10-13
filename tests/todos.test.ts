@@ -215,6 +215,47 @@ describe('tabs and archive', () => {
   })
 })
 
+describe('archive persistence', () => {
+  test('a new session shows the archive stored by an earlier one, and archiving adds to it', async ($, on) => {
+    const key = 'archive:/project'
+    const earlier = { id: 'agent:main@1', sourceId: 'agent:main', archivedAt: 1, label: 'Main agent', kind: 'agent', items: [{ id: '0', text: 'Old archived task', status: 'pending' }], updatedAt: 1 }
+    const store = new Map<string, unknown>([[key, [earlier]]])
+    on('session.cwd', async () => ({ value: '/project' }))
+    on('store.get', async (_$, e) => ({ value: store.get(e.key) }))
+    on('store.set', async (_$, e) => {
+      store.set(e.key, e.value)
+
+      return { value: undefined }
+    })
+    on('command.register', async () => ({ value: undefined }) as never)
+    on('ui.open', async () => ({ value: { isPlaced: true } }) as never)
+    on('session.start', async (_$, e) => e as never)
+    on('fs.list', async () => ({ value: [] }) as never)
+    on('tool.call', { tool: 'TodoWrite' }, async () => ({ result: { oldTodos: [], newTodos: [] } }) as never)
+    await $.session.start({ cwd: '/project', surface: 'terminal' } as never)
+
+    await $.tool.call({
+      tool: 'TodoWrite',
+      todos: [{ content: 'New task', status: 'pending', activeForm: 'Doing it' }],
+    } as never)
+    const ui = await $.ui.mount({
+      plugin: 'agent-todos',
+      surface: 'terminal',
+      component: 'Pane',
+      requestId: 'agent-todos',
+      props: { title: 'Todos', isFocused: true, bodyColumns: 60, placement: 'dock', scroll: { top: 0, bodyRows: 30, contentRows: 0 }, view: {} } as never,
+      viewport: { columns: 160, rows: 40 } as never,
+    })
+    await ui.press({ key: 'archive:agent:main' })
+    expect(readArchive(store.get(key)).map(one => one.id)).toHaveLength(2)
+    expect(readArchive(store.get(key))[1]?.id).toBe('agent:main@1')
+
+    await ui.press({ key: 'tab:archived' })
+    expect(await ui.find({ type: 'Text', text: /Old archived task/ })).toBeDefined()
+    await ui.unmount()
+  })
+})
+
 describe('archive across sessions', () => {
   const odd = { id: 'odd:feat', label: 'ODD · feat', kind: 'odd' as const, items: [{ id: 'T1', text: 'T1', status: 'pending' as const }], updatedAt: 0 }
   const main = { id: 'agent:main', label: 'Main agent', kind: 'agent' as const, items: [{ id: '0', text: 'x', status: 'pending' as const }], updatedAt: 0 }

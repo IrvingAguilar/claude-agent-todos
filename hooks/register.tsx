@@ -96,11 +96,15 @@ async function loadArchive($: EngineInterface): Promise<void> {
   await update($, archive, () => stored)
 }
 
-/** Writes the archive to the session's state and to the store, together. */
+/**
+ * Writes the archive to the session's state and to the store, together. The
+ * change starts from the store, so it never drops what an earlier session kept.
+ */
 async function saveArchive($: EngineInterface, change: (list: ArchivedGroup[]) => ArchivedGroup[]): Promise<void> {
-  const next = change(await read($, archive))
+  const key = await archiveKey($)
+  const next = change(readArchive(await $.store.get(key)))
   await update($, archive, () => next)
-  await $.store.set(await archiveKey($), next)
+  await $.store.set(key, next)
 }
 
 async function archiveOne($: EngineInterface, group: TodoGroup): Promise<void> {
@@ -380,8 +384,9 @@ export const register: Register = on => {
       name: 'todos',
       description: 'Agent todos: open the pane; "reload" re-reads every source; "band on|off|auto" sets the band above the prompt; "clear" empties it',
     })
+    await loadArchive($)
     await scanOdd($)
-        void $.ui.open({ id: PANE, title: TITLE })
+    void $.ui.open({ id: PANE, title: TITLE })
 
     return next(e)
   })
