@@ -94,10 +94,10 @@ heading.
 - **Side pane.** It opens when the session starts. It docks beside the
   transcript in a fullscreen terminal at least 110 columns wide; from 144
   columns it shows up on its own, and in between run `/todos` to open it.
-- **Band above the prompt.** It shows when the terminal is narrower than 110
-  columns and the pane is not on screen: a compact view of at most 3
-  unfinished groups and their open tasks. Collapse it with its `[-]` mark,
-  or set it with `/todos band`.
+- **Band above the prompt.** It shows only the tasks in progress right now,
+  under the title of the agent, task list or ODD feature they belong to, at
+  any terminal width and beside the pane. It empties itself once nothing is
+  in progress. Hide it with `/todos band off`.
 
 The pane's buttons and hotkeys need the keyboard: click the pane or press
 `ctrl+x tab`.
@@ -150,9 +150,9 @@ lists scroll quickly.
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/todos`           | Opens the pane and re-reads the ODD documents.                                                                                                                                                                    |
 | `/todos reload`    | Rebuilds the list from its sources: each agent's last `TodoWrite` in its transcript, the session's tasks as `TaskList` returns them, every `odd/tasks/*.md`, and the archive. Groups no longer found are dropped. |
-| `/todos band on`   | Always shows the band above the prompt.                                                                                                                                                                           |
+| `/todos band on`   | Shows the in-progress tasks above the prompt.                                                                                                                                                                     |
 | `/todos band off`  | Never shows the band.                                                                                                                                                                                             |
-| `/todos band auto` | Shows the band only on narrow terminals (the default).                                                                                                                                                            |
+| `/todos band auto` | Same as `on` (the default).                                                                                                                                                                                       |
 | `/todos clear`     | Empties the live list. The archive is kept.                                                                                                                                                                       |
 
 ## Limits

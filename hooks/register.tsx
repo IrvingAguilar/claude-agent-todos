@@ -322,19 +322,23 @@ function RowView($: EngineInterface, e: RenderInput<'Pane'>, row: Row, archived:
   )
 }
 
-/** The band's compact list: unfinished groups and their open tasks. */
+/** The groups with a task in progress, each with only those tasks. */
+function inProgress(list: TodoGroup[]): TodoGroup[] {
+  return list
+    .map(group => ({ ...group, items: group.items.filter(item => item.status === 'in_progress') }))
+    .filter(group => group.items.length > 0)
+}
+
+/** The band: what the agents are doing right now, one title per group. */
 function BandTree($: EngineInterface, e: RenderInput<'AbovePrompt'>, list: TodoGroup[]) {
   const { Box } = $.ui.resolve(e)
-  const shown = list.filter(group => group.items.some(item => item.status !== 'completed')).slice(0, 3)
 
   return (
     <Box flexDirection="column">
-      {shown.map(group => (
+      {list.map(group => (
         <Box key={group.id} flexDirection="column">
           <Box flexDirection="row">{GroupTitle($, e, group)}</Box>
-          {group.items
-            .filter(item => item.status !== 'completed')
-            .map(item => <Box key={`${group.id}:${item.id}`}>{ItemText($, e, item)}</Box>)}
+          {group.items.map(item => <Box key={`${group.id}:${item.id}`}>{ItemText($, e, item)}</Box>)}
         </Box>
       ))}
     </Box>
@@ -382,7 +386,7 @@ export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: 'todos',
-      description: 'Agent todos: open the pane; "reload" re-reads every source; "band on|off|auto" sets the band above the prompt; "clear" empties it',
+      description: 'Agent todos: open the pane; "reload" re-reads every source; "band on|off|auto" shows or hides the in-progress band above the prompt; "clear" empties it',
     })
     await loadArchive($)
     await scanOdd($)
@@ -520,19 +524,14 @@ export const register: Register = on => {
     return next({ ...e, offset: wheelOffset({ ...e, isWheel }) })
   })
 
+  // The band shows the tasks in progress, whatever the width: it stays a
+  // few rows, and empties itself once nothing is in progress.
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey) return next(e)
-    const mode = await read($, bandMode)
-    if (mode === 'off') return next(e)
-    const list = groupsForTab(await read($, groups), 'all', await read($, archive))
+    if ((await read($, bandMode)) === 'off') return next(e)
+    const all = groupsForTab(await read($, groups), 'all', await read($, archive))
+    const list = inProgress(all)
     if (list.length === 0) return next(e)
-
-    if (mode === 'auto') {
-      const pane = (await $.ui.panes()).find(one => one.id === PANE)
-      const isNarrow = (e.viewport?.columns ?? 0) < 110
-      const paneShows = pane !== undefined && pane.isPlaced
-      if (paneShows || !isNarrow) return next(e)
-    }
 
     return BandTree($, e, list)
   })

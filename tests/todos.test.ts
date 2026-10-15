@@ -436,3 +436,61 @@ describe('/todos reload', () => {
     await ui.unmount()
   })
 })
+
+describe('band above the prompt', () => {
+  type Ctx = Parameters<Parameters<typeof test>[1]>
+  // Stands in for TodoWrite, the pane list and the engine's own band beneath the mod.
+  const engine = (on: Ctx[1]) => {
+    on('tool.call', { tool: 'TodoWrite' }, async () => ({ result: { oldTodos: [], newTodos: [] } }) as never)
+    on('ui.panes', async () => ({ value: [] }) as never)
+    on('ui.render', { component: 'AbovePrompt' }, async ($, e) => {
+      const { Text } = $.ui.resolve(e)
+
+      return h(Text, {}, 'engine band') as never
+    })
+  }
+  const mountBand = ($: Ctx[0], columns: number) =>
+    $.ui.mount({
+      plugin: 'agent-todos',
+      surface: 'terminal',
+      component: 'AbovePrompt',
+      props: { hasSurvey: false, isWorking: true } as never,
+      viewport: { columns, rows: 40 } as never,
+    })
+
+  test('shows only the tasks in progress, on a wide terminal too', async ($, on) => {
+    engine(on)
+    await $.tool.call({
+      tool: 'TodoWrite',
+      todos: [
+        { content: 'Write parser', status: 'completed', activeForm: 'Writing parser' },
+        { content: 'Draw band', status: 'in_progress', activeForm: 'Drawing the band' },
+        { content: 'Ship it', status: 'pending', activeForm: 'Shipping' },
+      ],
+    } as never)
+    const ui = await mountBand($, 160)
+    expect(await ui.find({ type: 'Text', text: /Drawing the band/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /Main agent/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /Ship it/ })).toBe(undefined)
+    expect(await ui.find({ type: 'Text', text: /Writ/ })).toBe(undefined)
+    await ui.unmount()
+  })
+
+  test('leaves the engine its band when no task is in progress', async ($, on) => {
+    engine(on)
+    await $.tool.call({ tool: 'TodoWrite', todos: [{ content: 'Ship it', status: 'pending', activeForm: 'Shipping' }] } as never)
+    const ui = await mountBand($, 80)
+    expect(await ui.find({ type: 'Text', text: /Ship it/ })).toBe(undefined)
+    expect(await ui.find({ type: 'Text', text: /engine band/ })).toBeDefined()
+    await ui.unmount()
+  })
+
+  test('/todos band off still hides it', async ($, on) => {
+    engine(on)
+    await $.tool.call({ tool: 'TodoWrite', todos: [{ content: 'Draw band', status: 'in_progress', activeForm: 'Drawing the band' }] } as never)
+    await $.command.run({ command: 'todos', args: 'band off' } as never)
+    const ui = await mountBand($, 160)
+    expect(await ui.find({ type: 'Text', text: /Drawing the band/ })).toBe(undefined)
+    await ui.unmount()
+  })
+})
