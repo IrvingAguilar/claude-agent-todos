@@ -39,9 +39,11 @@ starts loads the mod too once it is installed at the user scope.
 
 ```
 claude plugin marketplace update
+claude plugin update agent-todos@local-mods --scope user
 ```
 
-Then `/reload-plugins` in an open session.
+Then `/reload-plugins` in an open session. The marketplace update alone only
+refreshes the listing; `plugin update` installs the new version.
 
 ### Develop from a local checkout
 
@@ -55,8 +57,22 @@ claude plugin marketplace add ~/.claude/mods/agent-todos
 claude plugin install agent-todos@local-mods --scope user
 ```
 
-Edit the checkout and run `/reload-plugins` to load your changes. To try it
-for one session only, without installing: `claude --plugin-dir ~/dev/claude-agent-todos`.
+The install is a copy of the checkout, cached per version under
+`~/.claude/plugins/cache/local-mods/agent-todos/<version>/`, so `/reload-plugins`
+alone does not pick up your edits. To load them:
+
+1. Bump `version` in `.claude-plugin/plugin.json`.
+2. Run:
+
+   ```bash
+   claude plugin marketplace update local-mods
+   claude plugin update agent-todos@local-mods --scope user
+   ```
+
+3. Run `/reload-plugins` in open sessions; new sessions load it on start.
+
+To try your edits for one session only, without installing:
+`claude --plugin-dir ~/dev/claude-agent-todos`.
 
 ## How it works
 
